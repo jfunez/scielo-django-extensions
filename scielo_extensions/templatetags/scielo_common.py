@@ -23,8 +23,8 @@ def easy_tag(func):
     inner.__doc__ = inner.__doc__
     return inner
 
-def full_path(context, **params):
-
+def full_path(context, page_param_name='page', **params):
+    
     url_path = ''
     url_get = context['request'].GET.copy()
 
@@ -32,10 +32,13 @@ def full_path(context, **params):
         url_path = context['request'].META['PATH_INFO']
 
     for key, value in params.items():
+        if key == 'page' and page_param_name and page_param_name.lower() != 'page':
+            key = page_param_name.lower()
         url_get[key] = value
 
     if len(url_get):
-        url_path += "?%s" % "&".join(("%s=%s" % (key, value) for key, value in url_get.items() if value))
+        url_path += '&' if '?' in url_get else '?'
+        url_path += "%s" % "&".join(("%s=%s" % (key, value) for key, value in url_get.items() if value))
 
     return url_path.encode('utf8')
 
@@ -50,17 +53,17 @@ class NamedPagination(template.Node):
         letters = self.letters.resolve(context)
         selected = self.selected.resolve(context)
 
-        html_snippet = '''<div class="pagination" style="margin:0;padding-top:8px;text-align:center;">
-            <ul><li><a href="?" style="line-height: 20px;padding: 0 5px;">''' + str(__('All')) + '''</a></li>'''
+        html_snippet = '''<div class="pagination">
+            <ul><li><a href="?">''' + str(__('All')) + '''</a></li>'''
 
         for letter in letters:
             if letter != selected:
                 html_snippet += '''
-                <li><a href="{0}" style="line-height: 20px;padding: 0 5px;">{1}</a></li>'''\
+                <li><a href="{0}">{1}</a></li>'''\
                     .format(full_path(context, letter=letter),letter.encode('utf8'))
             else:
                 html_snippet += '''
-                <li class="active"><a href="{0}" style="line-height: 20px;padding: 0 5px;">{1}</a></li>'''\
+                <li class="active"><a href="{0}">{1}</a></li>'''\
                     .format(full_path(context, letter=letter),letter.encode('utf8'))
 
         html_snippet += '''
@@ -75,11 +78,13 @@ def named_pagination(_tag_name, *params):
 
 class Pagination(template.Node):
 
-    def __init__(self, object_record):
+    def __init__(self, object_record, page_param_name='page'):
         self.object_record = template.Variable(object_record)
+        self.page_param_name = template.Variable(page_param_name) if page_param_name.lower() != 'page' else None
 
     def render(self, context):
         object_record = self.object_record.resolve(context)
+        page_param_name = self.page_param_name.resolve(context) if self.page_param_name else None
 
         if not object_record.paginator:
             # the paginator is empty
@@ -92,23 +97,23 @@ class Pagination(template.Node):
 
             for page in object_record.paginator.page_range:
                 class_li_page = 'active' if object_record.number == page else ''
-                html_pages.append(u'<li class="{0}"><a href="{1}">{2}</a></li>'.format(class_li_page, full_path(context, page=page), page))
+                html_pages.append(u'<li class="{0}"><a href="{1}">{2}</a></li>'.format(class_li_page, full_path(context, page_param_name=page_param_name, page=page), page))
 
             html_snippet = u'''
                 <div class="pagination">
-                <ul>
-                <li class="prev {0}"><a href="{1}">&larr; {2}</a></li>
-                {3}
-                <li class="next {4}"><a href="{5}">{6} &rarr;</a></li>
-                </ul>
+                    <ul>
+                        <li class="prev {0}"><a href="{1}">&larr; {2}</a></li>
+                        {3}
+                        <li class="next {4}"><a href="{5}">{6} &rarr;</a></li>
+                    </ul>
                 </div>
                 '''.format(
                     class_li_previous,
-                    full_path(context, page=object_record.previous_page_number()),
+                    full_path(context, page_param_name=page_param_name, page=object_record.previous_page_number()),
                     _('Previous'),
                     ''.join(html_pages),
                     class_li_next,
-                    full_path(context, page=object_record.next_page_number()),
+                    full_path(context, page_param_name=page_param_name, page=object_record.next_page_number()),
                     _('Next')
                 )
             return html_snippet
@@ -117,17 +122,19 @@ class Pagination(template.Node):
 
 @register.tag()
 @easy_tag
-def pagination(_tag_name, params):
-    return Pagination(params)
+def pagination(_tag_name, params, page_param_name='page'):
+    return Pagination(params, page_param_name)
 
 class SimplePagination(template.Node):
 
-    def __init__(self, object_record):
+    def __init__(self, object_record, page_param_name='page'):
         self.object_record = template.Variable(object_record)
+        self.page_param_name = template.Variable(page_param_name) if page_param_name.lower() != 'page' else None
 
     def render(self, context):
 
         object_record = self.object_record.resolve(context)
+        page_param_name = self.page_param_name.resolve(context) if self.page_param_name else None
 
         if not object_record.paginator:
             # the paginator is empty
@@ -138,29 +145,36 @@ class SimplePagination(template.Node):
             class_li_next = 'disabled' if not object_record.has_next() else ''
 
             html_snippet = u'''
-                <span style=""><b>{0}-{1}</b> {2} <b>{3}</b></span>
-                <span class="pagination"><ul>
-                <li class="prev {4}">
-                <a href="{5}">&larr;</a></li>
-                <li class="next {6}">
-                <a href="{7}">&rarr;</a></li>
-                </ul></span>
+                <ul class="pager">
+                    <li class="prev {4}">
+                        <a href="{5}">&larr;</a>
+                    </li>
+                    <li class="middle">
+                        <span>
+                            <strong>{0}-{1}</strong> {2} <strong>{3}</strong>
+                        </span>
+                    </li>
+                    <li class="next {6}">
+                        <a href="{7}">&rarr;</a>
+                    </li>
+                </ul>
                 '''.format(object_record.start_index(),
                     object_record.end_index(), _('of'),
                     object_record.paginator.count,
                     class_li_previous,
-                    full_path(context, page=object_record.previous_page_number()),
+                    full_path(context, page_param_name=page_param_name, page=object_record.previous_page_number()),
                     class_li_next,
-                    full_path(context, page=object_record.next_page_number()))
+                    full_path(context, page_param_name=page_param_name, page=object_record.next_page_number()))
 
             return html_snippet
 
-        else: return ''
+        else:
+            return ''
 
 @register.tag()
 @easy_tag
-def simple_pagination(_tag_name, params):
-    return SimplePagination(params)
+def simple_pagination(_tag_name, params, page_param_name='page'):
+    return SimplePagination(params, page_param_name)
 
 class FieldHelpText(template.Node):
 

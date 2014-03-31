@@ -58,15 +58,15 @@ class ToolsTest(TestCase):
 
         result_html = template.render(context)
 
-        self.assertEqual('''<div class="pagination" style="margin:0;padding-top:8px;text-align:center;">
-            <ul><li><a href="?" style="line-height: 20px;padding: 0 5px;">All</a></li>
-                <li><a href="?letter=a" style="line-height: 20px;padding: 0 5px;">a</a></li>
-                <li class="active"><a href="?letter=f" style="line-height: 20px;padding: 0 5px;">f</a></li>
-                <li><a href="?letter=m" style="line-height: 20px;padding: 0 5px;">m</a></li>
-                <li><a href="?letter=p" style="line-height: 20px;padding: 0 5px;">p</a></li>
-                <li><a href="?letter=r" style="line-height: 20px;padding: 0 5px;">r</a></li>
-                <li><a href="?letter=t" style="line-height: 20px;padding: 0 5px;">t</a></li>
-                <li><a href="?letter=t" style="line-height: 20px;padding: 0 5px;">t</a></li>
-                <li><a href="?letter=u" style="line-height: 20px;padding: 0 5px;">u</a></li>
-                <li><a href="?letter=z" style="line-height: 20px;padding: 0 5px;">z</a></li>
+        self.assertEqual('''<div class="pagination">
+            <ul><li><a href="?">All</a></li>
+                <li><a href="?letter=a">a</a></li>
+                <li class="active"><a href="?letter=f">f</a></li>
+                <li><a href="?letter=m">m</a></li>
+                <li><a href="?letter=p">p</a></li>
+                <li><a href="?letter=r">r</a></li>
+                <li><a href="?letter=t">t</a></li>
+                <li><a href="?letter=t">t</a></li>
+                <li><a href="?letter=u">u</a></li>
+                <li><a href="?letter=z">z</a></li>
             </ul></div>''', result_html)
